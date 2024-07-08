@@ -4,6 +4,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.filters.command import Command
 from aiogram import types
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
+from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
 import aiosqlite
 from aiogram import F
 import xml.etree.ElementTree as ET
@@ -157,14 +158,15 @@ async def get_statistics():
 async def cmd_start(message: types.Message):
     builder = ReplyKeyboardBuilder()
     builder.add(types.KeyboardButton(text="Начать игру"))
+    builder.add(types.KeyboardButton(text="Статистика"))
     await message.answer("Добро пожаловать в квиз!", reply_markup=builder.as_markup(resize_keyboard=True))
 
-#! починить
 # Хэндлер на команду /statistics
 @dp.message(F.text=="Статистика")
 @dp.message(Command("statistics"))
 async def cmd_statistics(message: types.Message):
     builder = ReplyKeyboardBuilder()
+    builder.add(types.KeyboardButton(text="Начать игру"))
     builder.add(types.KeyboardButton(text="Статистика"))
     statistic_answer = await get_statistics()
     await message.answer(f"Статистика: \n{statistic_answer}", reply_markup=builder.as_markup(resize_keyboard=True))
@@ -188,7 +190,9 @@ async def right_answer(callback: types.CallbackQuery):
         reply_markup=None
     )
     current_question_index = await get_quiz_index(callback.from_user.id)
-    await callback.message.answer("Верно!")
+    question_info = await get_question_and_options(current_question_index)
+    correct_option = question_info[5]
+    await callback.message.answer(f"Верно! {correct_option}")
 
     # обновление номера текущего вопроса в базе данных
     current_question_index += 1
@@ -220,7 +224,7 @@ async def wrong_answer(callback: types.CallbackQuery):
     correct_option = question_info[5]
 
     # отправляем в чат сообщение об ошибке с указанием верного ответа
-    await callback.message.answer(f"Неправильно. Правильный ответ: {correct_option}")
+    await callback.message.answer(f"Неправильно. \n✔Ваш ответ: {correct_option}. \n❌Правильный ответ: {correct_option}")
 
     # обновление номера текущего вопроса в базе данных
     current_question_index += 1
