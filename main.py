@@ -8,6 +8,8 @@ import aiosqlite
 from aiogram import F
 import xml.etree.ElementTree as ET
 
+# сделать: get_statistics возвращает полную статистику
+
 
 # включаем логирование, чтобы не пропустить важные сообщения
 logging.basicConfig(level=logging.INFO)
@@ -131,6 +133,24 @@ async def new_quiz(message):
     # запрашиваем новый вопрос для квиза
     await get_question(message, user_id)
 
+# ф: возвращает 
+# выход: текст из количество_вопросов строк "X человек ответил(и) на Y вопрос(ов)"
+async def get_statistics():
+    async with aiosqlite.connect(DB_NAME) as db:
+        async with db.execute('SELECT last_result, COUNT(last_result) FROM quiz_state GROUP BY last_result  ORDER BY last_result ') as cursor:
+            results = await cursor.fetchall()
+    res_dict = dict(results)
+    for i in range(11):
+        if i not in res_dict:
+            res_dict[i] = 0
+    res_list = list(res_dict.items())
+    res_list.sort()
+    result = tuple(res_list)
+    final_result = ''
+    question_amount = get_question_amount()
+    for stat_tuple in result:
+        final_result += f'{stat_tuple[1]} человек ответил(и) на {stat_tuple[0]} вопрос(ов)' + ('\n' if stat_tuple[0] != question_amount else '')
+    return final_result
 
 # Хэндлер на команду /start
 @dp.message(Command("start"))
@@ -138,6 +158,16 @@ async def cmd_start(message: types.Message):
     builder = ReplyKeyboardBuilder()
     builder.add(types.KeyboardButton(text="Начать игру"))
     await message.answer("Добро пожаловать в квиз!", reply_markup=builder.as_markup(resize_keyboard=True))
+
+#! починить
+# Хэндлер на команду /statistics
+@dp.message(F.text=="Статистика")
+@dp.message(Command("statistics"))
+async def cmd_statistics(message: types.Message):
+    builder = ReplyKeyboardBuilder()
+    builder.add(types.KeyboardButton(text="Статистика"))
+    statistic_answer = await get_statistics()
+    await message.answer(f"Статистика: \n{statistic_answer}", reply_markup=builder.as_markup(resize_keyboard=True))
 
 # Хэндлер на команды /quiz
 @dp.message(F.text=="Начать игру")
